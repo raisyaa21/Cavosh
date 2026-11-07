@@ -21,14 +21,15 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+        $input = $request->username;
+        $name = str_contains($input, '@') ? explode('@', $input)[0] : $input;
+        $email = str_contains($input, '@') ? $input : $input . '@gmail.com';
+
         User::create([
-
-            'name' => $request->username,
-
-            'email' => $request->username . '@gmail.com',
-
-            'password' => Hash::make($request->password)
-
+            'name' => $name,
+            'email' => $email,
+            'password' => Hash::make($request->password),
+            'role' => 'user'
         ]);
 
         return redirect('/');
@@ -36,30 +37,23 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-     $credentials = [
-            'email' => $request->username . '@gmail.com',
+        $loginInput = $request->username;
+        $email = str_contains($loginInput, '@') ? $loginInput : $loginInput . '@gmail.com';
+
+        $credentials = [
+            'email' => $email,
             'password' => $request->password
         ];
 
-     if (Auth::attempt($credentials)) {
-    $request->session()->regenerate();
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
 
-    if (Auth::user()->role == 'admin') {
-        return redirect('/admin/dashboard');
-    }
+            if (Auth::user()->role == 'admin') {
+                return redirect('/admin/dashboard');
+            }
 
-    return redirect('/dashboard');
-}
-
-       if (Auth::attempt($credentials)) {
-        $request->session()->regenerate();
-
-    if (Auth::user()->role == 'admin') {
-        return redirect('/admin/dashboard');
-    }
-
-    return redirect('/dashboard');
-}
+            return redirect('/dashboard');
+        }
 
         return back()->with('error', 'Login gagal');
     }

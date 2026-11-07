@@ -143,6 +143,12 @@
 
     </div>
 
+    @if(session('success'))
+        <div style="background:#d4edda; color:#155724; padding:15px; border-radius:10px; margin-bottom:25px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
     @if($transactions->count() > 0)
 
     <div class="history-container">

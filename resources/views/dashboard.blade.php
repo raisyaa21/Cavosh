@@ -4,6 +4,7 @@
     <title>Cavosh Cafe</title>
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
 
@@ -195,103 +196,93 @@ class="{{ request()->is('history') ? 'active' : '' }}">
 
     </div>
 
-    <div class="menu-container">
+    @if(session('success'))
+        <div class="mb-4 mx-6 p-4 bg-green-100 border border-green-300 text-green-700 rounded-xl text-sm font-medium">
+            {{ session('success') }}
+        </div>
+    @endif
 
-        @foreach($menus as $menu)
+    @if(session('error'))
+        <div class="mb-4 mx-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-xl text-sm font-medium">
+            {{ session('error') }}
+        </div>
+    @endif
 
-        <div class="menu-card">
+    <div class="flex gap-6 p-6">
+        <!-- KOLOM KIRI: DAFTAR MENU -->
+        <div class="w-2/3 grid grid-cols-2 md:grid-cols-3 gap-4">
+            @foreach($menus as $menu)
+                <div class="border rounded-xl p-4 bg-white shadow-sm flex flex-col justify-between">
+                    <div>
+                        <!-- Foto Menu -->
+                        <img src="{{ $menu->image }}" alt="{{ $menu->name }}" class="w-full h-36 object-cover rounded-lg mb-3 {{ $menu->stock <= 0 ? 'grayscale opacity-60' : '' }}">
+                        <h3 class="font-bold text-gray-800 text-lg">{{ $menu->name }}</h3>
+                        <p class="text-orange-600 font-semibold mt-1">Rp {{ number_format($menu->price, 0, ',', '.') }}</p>
+                        <span class="text-xs text-gray-500">Stok: {{ $menu->stock }}</span>
+                    </div>
 
-            @if($menu->stock <= 0)
-
-<img
-src="{{ $menu->image }}"
-class="gray">
-
-@else
-
-<img
-src="{{ $menu->image }}">
-
-@endif
-
-            <h3>{{ $menu->name }}</h3>
-
-            <p>
-                Rp {{ number_format($menu->price) }}
-            </p>
-
-            <p>
-                Stock:
-                <span id="stock-{{ $menu->id }}">
-                    {{ $menu->stock }}
-                </span>
-            </p>
-
-            <div class="qty">
-
-                <button onclick="minusQty(
-                    {{ $menu->id }},
-                    {{ $menu->price }}
-                )">
-                    -
-                </button>
-
-                <span id="qty-{{ $menu->id }}">
-                    0
-                </span>
-
-                <button onclick="plusQty(
-                    {{ $menu->id }},
-                    {{ $menu->price }},
-                    {{ $menu->stock }},
-                    '{{ $menu->name }}'
-                )">
-                    +
-                </button>
-
-            </div>
-
+                    <!-- Tombol Tambah ke Cart -->
+                    <form action="/add-to-cart/{{ $menu->id }}" method="POST" class="mt-4">
+                        @csrf
+                        <button type="submit" class="w-full bg-orange-500 text-white py-2 rounded-lg font-medium hover:bg-orange-600 transition {{ $menu->stock <= 0 ? 'opacity-50 cursor-not-allowed' : '' }}" {{ $menu->stock <= 0 ? 'disabled' : '' }}>
+                            {{ $menu->stock <= 0 ? 'Stok Habis' : '+ Tambah' }}
+                        </button>
+                    </form>
+                </div>
+            @endforeach
         </div>
 
-        @endforeach
+        <!-- KOLOM KANAN: CART (Keranjang Belanja) -->
+        <div class="w-1/3 bg-white p-6 rounded-xl shadow-sm h-fit">
+            <h2 class="text-xl font-bold mb-4">Cart</h2>
+            
+            <!-- Menampilkan Total dari Session Cart -->
+            @php
+                $cart = session('cart', []);
+                $total = array_reduce($cart, function($carry, $item) {
+                    return $carry + ($item['price'] * $item['quantity']);
+                }, 0);
+            @endphp
 
-    </div>
+            @if(!empty($cart))
+                <div class="space-y-2 mb-4 max-h-48 overflow-y-auto divide-y divide-gray-100">
+                    @foreach($cart as $id => $item)
+                        <div class="flex justify-between items-center pt-2 text-sm">
+                            <div>
+                                <p class="font-semibold text-gray-800">{{ $item['name'] }}</p>
+                                <p class="text-xs text-gray-500">{{ $item['quantity'] }} x Rp {{ number_format($item['price'], 0, ',', '.') }}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-orange-600">
+                                    Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}
+                                </span>
+                                <form action="/remove-from-cart/{{ $id }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-red-400 hover:text-red-600 text-xs font-bold px-1 rounded" title="Hapus item">✕</button>
+                                </form>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-gray-400 text-sm mb-4 italic">Keranjang masih kosong</p>
+            @endif
 
-    <div class="cart">
+            <form action="{{ route('checkout') }}" method="POST">
+                @csrf
+                <p class="text-lg font-bold mb-4">Total: Rp {{ number_format($total, 0, ',', '.') }}</p>
 
-        <h2>Cart</h2>
+                <!-- Dropdown PILIH METODE PEMBAYARAN -->
+                <select name="payment_method" class="w-full p-2 border rounded-md mb-4" required>
+                    <option value="Cash">Cash</option>
+                    <option value="QRIS">QRIS</option>
+                </select>
 
-        <div id="cartItems"></div>
-
-        <h3 style="margin-top:20px;">
-            Total:
-            Rp <span id="totalPrice">0</span>
-        </h3>
-
-        <select id="paymentMethod">
-            <div id="qrisBox"
-style="display:none; margin-top:20px;">
-
-    <img
-    src="{{ asset('images/qris.jpg') }}"
-    width="250">
-
-</div>
-
-            <option value="Cash">
-                Cash
-            </option>
-
-            <option value="QRIS">
-                QRIS
-            </option>
-
-        </select>
-
-        <button class="checkout" onclick="checkout()">
-            Checkout
-        </button>
-
+                <button type="submit" class="w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition disabled:opacity-50" {{ empty($cart) ? 'disabled' : '' }}>
+                    Checkout
+                </button>
+            </form>
+        </div>
     </div>
 
 </div>
